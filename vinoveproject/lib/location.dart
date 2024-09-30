@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -12,74 +11,106 @@ class CurrentLocation extends StatefulWidget {
 }
 
 class _CurrentLocationState extends State<CurrentLocation> {
-  LatLng? currentLocation; // To store the user's current location
-  MapController mapController = MapController(); // Controller to manage the map
+  LatLng? currentLocation;
+  MapController mapController = MapController();
 
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation(); // Get live location when the widget is initialized
+    _getCurrentLocation();
   }
 
-  // Function to get the user's current location
   Future<void> _getCurrentLocation() async {
-    // Get the current location
     Position position = await Geolocator.getCurrentPosition();
-
     setState(() {
-      // Set the current location
       currentLocation = LatLng(position.latitude, position.longitude);
-
-      // Move the map to the current location
     });
-    Future.delayed(Duration(
-      seconds: 3,
-    )).then((v) {
+    Future.delayed(Duration(seconds: 3)).then((v) {
       setState(() {
         mapController.move(currentLocation!, 13.0);
       });
     });
   }
 
+  // Function to recenter map to current location
+  void _recenterMap() {
+    if (currentLocation != null) {
+      mapController.move(currentLocation!, 13.0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: true,
-        title: const Text("User"),
+        title: const Text("User Location"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.zoom_in),
+            onPressed: () => mapController.move(mapController.center, mapController.zoom + 1),
+          ),
+          IconButton(
+            icon: const Icon(Icons.zoom_out),
+            onPressed: () => mapController.move(mapController.center, mapController.zoom - 1),
+          ),
+        ],
       ),
       body: currentLocation == null
-          ? const Center(
-          child:
-          CircularProgressIndicator()) // Show loading indicator while waiting for location
-          : FlutterMap(
-        mapController:
-        mapController, // Use the map controller to move the map
-        options: MapOptions(
-          initialCenter:
-          currentLocation!, // Center the map on the current location
-          initialZoom: 100.0, // Initial zoom level
-        ),
+          ? const Center(child: CircularProgressIndicator())
+          : Stack(
         children: [
-          TileLayer(
-            urlTemplate:
-            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            subdomains: const ['a', 'b', 'c'],
-          ),
-          MarkerLayer(
-            markers: [
-              Marker(
-                width: 80.0,
-                height: 80.0,
-                point:
-                currentLocation!, // Place the marker at the live location
-                child: const Icon(
-                  Icons.my_location,
-                  color: Colors.blue,
-                  size: 40.0,
-                ),
+          FlutterMap(
+            mapController: mapController,
+            options: MapOptions(
+              initialCenter: currentLocation!,
+              initialZoom: 13.0,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                subdomains: const ['a', 'b', 'c'],
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    width: 80.0,
+                    height: 80.0,
+                    point: currentLocation!,
+                    builder: (ctx) => GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (context) => Container(
+                            padding: EdgeInsets.all(20),
+                            child: Text(
+                              'Latitude: ${currentLocation!.latitude}, '
+                                  'Longitude: ${currentLocation!.longitude}',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        );
+                      },
+                      child: AnimatedContainer(
+                        duration: Duration(seconds: 1),
+                        child: Icon(
+                          Icons.my_location,
+                          color: Colors.blue,
+                          size: 40.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
+          ),
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: _recenterMap,
+              child: const Icon(Icons.my_location),
+            ),
           ),
         ],
       ),
